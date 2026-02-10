@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useNavigate } from 'react-router-dom';
 
+import { GoogleLogin } from '@react-oauth/google';
+
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const { login, isLoading } = useAuthStore();
+    const { login, loginGoogle, isLoading } = useAuthStore();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -58,6 +60,28 @@ export default function Login() {
                         {isLoading ? 'Loading...' : 'Login'}
                     </button>
                 </form>
+
+                <div className="my-6 flex items-center">
+                    <div className="flex-grow border-t border-gray-300"></div>
+                    <span className="flex-shrink-0 mx-4 text-gray-500 text-sm">Or</span>
+                    <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <div className="flex justify-center">
+                    <GoogleLogin
+                        onSuccess={async (credentialResponse) => {
+                            try {
+                                await loginGoogle(credentialResponse.credential);
+                                navigate('/');
+                            } catch (err) {
+                                setError('Google Login Failed');
+                            }
+                        }}
+                        onError={() => {
+                            setError('Google Login Failed');
+                        }}
+                    />
+                </div>
                 <p className="mt-4 text-center text-sm text-gray-600">
                     Don't have an account? <a href="/register" className="text-blue-500 hover:underline">Register</a>
                 </p>

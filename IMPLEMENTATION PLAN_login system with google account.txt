@@ -1,0 +1,182 @@
+IMPLEMENTATION PLAN
+Upgrade Authentication System – Login with Google Account
+________________________________________
+1. Objective (Tujuan)
+Meng-upgrade sistem autentikasi yang sudah ada agar user bisa login menggunakan Google Account, tanpa menghilangkan metode login lama (email/password).
+Target:
+•	Login lebih cepat (1 klik)
+•	Reduce friction signup
+•	Aman, scalable, dan free (OAuth Google)
+________________________________________
+2. Scope (Cakupan Pekerjaan)
+In Scope
+•	Integrasi Google OAuth 2.0
+•	Support Login & Register via Google
+•	Sinkronisasi user Google ke database internal
+•	Session / JWT tetap pakai sistem existing
+•	Bisa dijalankan di localhost & production
+Out of Scope
+•	Google Workspace / Enterprise SSO
+•	Multi-provider login (Facebook, Apple, dll)
+•	Advanced Google API (Maps, Drive, dsb)
+________________________________________
+3. High-Level Architecture
+[Frontend]
+  ↓ (Google Sign-In Button)
+[Google Identity Service]
+  ↓ (ID Token)
+[Backend Auth Endpoint]
+  ↓
+[Verify Token with Google]
+  ↓
+[User DB]
+  ↓
+[Session / JWT Issued]
+________________________________________
+4. Technical Stack Assumption
+(Bisa disesuaikan, ini default aman)
+•	Frontend: Web (React / Next.js / Vue / Plain JS)
+•	Backend:
+o	Node.js (Express) atau
+o	Laravel (Socialite) atau
+o	PHP native
+•	Auth: JWT / Session existing
+•	DB: MySQL / PostgreSQL
+________________________________________
+5. Implementation Steps (Detail & Urut)
+STEP 1 — Google Cloud Setup
+Owner: Backend / DevOps
+1.	Buat project di Google Cloud Console
+2.	Enable:
+o	Google Identity Services
+3.	Setup OAuth Consent Screen
+o	Type: External
+o	Scope: email, profile
+4.	Create OAuth Client ID
+o	Type: Web Application
+o	Authorized redirect URI:
+o	http://localhost:PORT/auth/google/callback
+o	https://domain-production/auth/google/callback
+Output:
+•	GOOGLE_CLIENT_ID : 73849790837-mhhuruevoe8kfclh52kgm48l2qo45bcr.apps.googleusercontent.com
+•	GOOGLE_CLIENT_SECRET : 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
+
+jaga-jaga gatau apa ini pokoknya yang buat BE : http://localhost:3000/auth/google/callback 
+________________________________________
+STEP 2 — Database Preparation
+Owner: Backend
+Tambahkan field pada tabel users:
+google_id        (nullable, unique)
+email            (unique)
+name
+avatar_url
+auth_provider    ('local' | 'google')
+Rules:
+•	Email Google = primary identifier
+•	1 email = 1 user (no duplicate account)
+________________________________________
+STEP 3 — Frontend Integration
+Owner: Frontend
+1.	Tambahkan Google Sign-In Button
+2.	Setelah user pilih akun:
+o	Dapatkan id_token
+3.	Kirim id_token ke backend
+Payload contoh:
+POST /auth/google
+{
+  id_token: "xxxxx"
+}
+UX rules:
+•	Kalau user baru → auto register
+•	Kalau user lama → auto login
+•	No password prompt
+________________________________________
+STEP 4 — Backend Authentication Logic
+Owner: Backend
+Flow backend:
+1.	Terima id_token
+2.	Verifikasi token ke Google
+3.	Ambil data user:
+o	google_id
+o	email
+o	name
+o	picture
+4.	Check DB:
+o	Jika user ada → login
+o	Jika belum → create user
+5.	Generate:
+o	JWT / session token (existing mechanism)
+6.	Return auth response ke frontend
+Security:
+•	Token diverifikasi server-side
+•	Tidak trust data dari frontend
+________________________________________
+STEP 5 — Session & Authorization
+Owner: Backend
+•	Login Google HARUS menghasilkan token yang sama seperti login biasa
+•	Middleware auth existing tidak perlu diubah
+•	Authorization tetap berbasis role internal
+________________________________________
+STEP 6 — Environment Configuration
+Owner: DevOps
+Tambahkan env:
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+Environment:
+•	Local
+•	Staging
+•	Production
+________________________________________
+STEP 7 — Localhost Testing
+Owner: QA / Dev
+Test cases:
+•	Login Google di localhost
+•	User baru auto created
+•	User lama login sukses
+•	Logout & re-login
+•	Invalid token → reject
+________________________________________
+STEP 8 — Production Readiness
+Owner: Backend / DevOps
+Checklist:
+•	Domain verified di Google Console
+•	OAuth Consent Screen → Production
+•	HTTPS enabled
+•	Error handling & logging aktif
+________________________________________
+6. Edge Cases & Rules
+•	Email Google sudah ada tapi auth_provider = local
+→ Link account otomatis (no duplicate)
+•	User revoke Google access
+→ User masih ada, login ulang perlu re-consent
+•	Google service down
+→ Login email/password tetap jalan
+________________________________________
+7. Security Notes
+•	Jangan simpan Google access token
+•	Simpan hanya:
+o	google_id
+o	email
+•	Semua token diverifikasi backend
+•	Rate limit endpoint /auth/google
+________________________________________
+8. Deliverables
+•	Google Login Button (UI)
+•	/auth/google endpoint
+•	DB migration
+•	Environment config
+•	Tested on localhost & production
+________________________________________
+9. Estimated Effort
+•	Backend: langsung sekarang
+•	Frontend: langsung sekarang
+•	Testing & deploy: testing sekarang, deploy gtw
+➡️ Total: ±3 hari kerja
+________________________________________
+10. Final Notes (Important)
+•	Tidak ada biaya Google API
+•	Aman untuk localhost
+•	Standar industri (dipakai startup & enterprise)
+•	Scalable ke Apple / Facebook login ke depannya
+

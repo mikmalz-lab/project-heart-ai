@@ -19,6 +19,18 @@ export const useAuthStore = create((set) => ({
         }
     },
 
+    loginGoogle: async (credential) => {
+        set({ isLoading: true });
+        try {
+            const { data } = await authAPI.googleLogin(credential);
+            localStorage.setItem('token', data.token);
+            set({ user: data.user, token: data.token, isAuthenticated: true, isLoading: false });
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    },
+
     logout: () => {
         localStorage.removeItem('token');
         set({ user: null, token: null, isAuthenticated: false });

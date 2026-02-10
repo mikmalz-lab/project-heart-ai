@@ -3,6 +3,8 @@ import { authAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
+import { GoogleLogin } from '@react-oauth/google';
+
 export default function Register() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -12,7 +14,7 @@ export default function Register() {
     const navigate = useNavigate();
 
     // Optional: auto login after register
-    const { login } = useAuthStore();
+    const { login, loginGoogle } = useAuthStore();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -78,6 +80,29 @@ export default function Register() {
                         {isLoading ? 'Loading...' : 'Register'}
                     </button>
                 </form>
+
+                <div className="my-6 flex items-center">
+                    <div className="flex-grow border-t border-gray-300"></div>
+                    <span className="flex-shrink-0 mx-4 text-gray-500 text-sm">Or</span>
+                    <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <div className="flex justify-center">
+                    <GoogleLogin
+                        text="signup_with"
+                        onSuccess={async (credentialResponse) => {
+                            try {
+                                await loginGoogle(credentialResponse.credential);
+                                navigate('/');
+                            } catch (err) {
+                                setError('Google Signup Failed');
+                            }
+                        }}
+                        onError={() => {
+                            setError('Google Signup Failed');
+                        }}
+                    />
+                </div>
                 <p className="mt-4 text-center text-sm text-gray-600">
                     Already have an account? <a href="/login" className="text-blue-500 hover:underline">Login</a>
                 </p>
