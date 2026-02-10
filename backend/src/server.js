@@ -43,11 +43,32 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 // Database sync and server start
-sequelize.sync({ alter: true }).then(() => {
-    console.log('✅ Database synced');
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT}`);
-    });
-}).catch(err => {
-    console.error('❌ Database connection failed:', err);
-});
+const startServer = async () => {
+    try {
+        // Disable FK checks to allow table modification/recreation in SQLite
+        await sequelize.query('PRAGMA foreign_keys = OFF');
+
+        try {
+            // Drop backup table if exists from failed migrations
+            await sequelize.query('DROP TABLE IF EXISTS `Users_backup`');
+            // Fix empty strings in google_id to avoid unique constraint issues if any remain
+            await sequelize.query("UPDATE `Users` SET `google_id` = NULL WHERE `google_id` = ''");
+        } catch (e) {
+            console.log('Cleanup step skipped or failed (ignore if first run)', e.message);
+        }
+
+        await sequelize.sync({ alter: true });
+        console.log('✅ Database synced');
+
+        // Re-enable FK checks
+        await sequelize.query('PRAGMA foreign_keys = ON');
+
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+        });
+    } catch (err) {
+        console.error('❌ Database connection failed:', err);
+    }
+};
+
+startServer();
